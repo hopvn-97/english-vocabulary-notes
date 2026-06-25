@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { QuickAddVocabulary } from "@/components/quick-add-vocabulary";
+import { VocabularyStats } from "@/components/vocabulary-stats";
 import { VocabularyForm } from "@/components/vocabulary-form";
 import { VocabularyTable } from "@/components/vocabulary-table";
 import type { Vocabulary, VocabularyInput } from "@/types/vocabulary";
 
 export default function VocabularyPage() {
   const [items, setItems] = useState<Vocabulary[]>([]);
+  const [allItems, setAllItems] = useState<Vocabulary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -24,8 +26,8 @@ export default function VocabularyPage() {
     tag: ""
   });
 
-  const partsOfSpeech = useMemo(() => Array.from(new Set(items.map((item) => item.part_of_speech).filter(Boolean))).sort(), [items]);
-  const tags = useMemo(() => Array.from(new Set(items.flatMap((item) => item.tags))).sort(), [items]);
+  const partsOfSpeech = useMemo(() => Array.from(new Set(allItems.map((item) => item.part_of_speech).filter(Boolean))).sort(), [allItems]);
+  const tags = useMemo(() => Array.from(new Set(allItems.flatMap((item) => item.tags))).sort(), [allItems]);
 
   const loadVocabulary = useCallback(async () => {
     setIsLoading(true);
@@ -37,14 +39,23 @@ export default function VocabularyPage() {
         if (value && value !== "all") params.set(key, value);
       });
 
-      const response = await fetch(`/api/vocabulary?${params.toString()}`, { cache: "no-store" });
+      const [response, allResponse] = await Promise.all([
+        fetch(`/api/vocabulary?${params.toString()}`, { cache: "no-store" }),
+        fetch("/api/vocabulary", { cache: "no-store" })
+      ]);
       const payload = await response.json();
+      const allPayload = await allResponse.json();
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Failed to load vocabulary.");
       }
 
+      if (!allResponse.ok) {
+        throw new Error(allPayload.error ?? "Failed to load vocabulary stats.");
+      }
+
       setItems(payload.data);
+      setAllItems(allPayload.data);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load vocabulary.");
     } finally {
@@ -128,6 +139,8 @@ export default function VocabularyPage() {
       </div>
 
       {error ? <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
+
+      <VocabularyStats items={allItems} />
 
       <QuickAddVocabulary isSubmitting={isSubmitting} onSubmit={saveVocabulary} />
 
