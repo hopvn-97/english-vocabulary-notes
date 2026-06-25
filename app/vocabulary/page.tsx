@@ -140,19 +140,6 @@ export default function VocabularyPage() {
 
       {error ? <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
 
-      <VocabularyStats items={allItems} />
-
-      <QuickAddVocabulary isSubmitting={isSubmitting} onSubmit={saveVocabulary} />
-
-      {showForm || editing ? (
-        <VocabularyForm
-          initialValue={editing}
-          isSubmitting={isSubmitting}
-          onCancel={editing ? () => setEditing(null) : undefined}
-          onSubmit={saveVocabulary}
-        />
-      ) : null}
-
       <section className="grid gap-3 rounded-lg border bg-card p-4 shadow-sm md:grid-cols-[1.2fr_0.8fr_0.7fr_0.7fr]">
         <label className="relative grid gap-2 text-sm font-medium">
           Search
@@ -184,7 +171,20 @@ export default function VocabularyPage() {
         </label>
       </section>
 
+      <QuickAddVocabulary isSubmitting={isSubmitting} onSubmit={saveVocabulary} />
+
+      {showForm || editing ? (
+        <VocabularyForm
+          initialValue={editing}
+          isSubmitting={isSubmitting}
+          onCancel={editing ? () => setEditing(null) : undefined}
+          onSubmit={saveVocabulary}
+        />
+      ) : null}
+
       <VocabularyTable items={items} isLoading={isLoading} onEdit={setEditing} onDelete={deleteItem} />
+
+      <VocabularyStats items={allItems} />
     </div>
   );
 }
