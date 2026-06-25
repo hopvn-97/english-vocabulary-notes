@@ -28,6 +28,16 @@ export default function VocabularyPage() {
 
   const partsOfSpeech = useMemo(() => Array.from(new Set(allItems.map((item) => item.part_of_speech).filter(Boolean))).sort(), [allItems]);
   const tags = useMemo(() => Array.from(new Set(allItems.flatMap((item) => item.tags))).sort(), [allItems]);
+  const hasActiveFilters = Boolean(filters.search.trim() || filters.part_of_speech || filters.tag || filters.status !== "all");
+  const tableItems = useMemo(() => {
+    if (hasActiveFilters) {
+      return items;
+    }
+
+    return [...allItems]
+      .sort((first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime())
+      .slice(0, 3);
+  }, [allItems, hasActiveFilters, items]);
 
   const loadVocabulary = useCallback(async () => {
     setIsLoading(true);
@@ -182,7 +192,7 @@ export default function VocabularyPage() {
         />
       ) : null}
 
-      <VocabularyTable items={items} isLoading={isLoading} onEdit={setEditing} onDelete={deleteItem} />
+      <VocabularyTable items={tableItems} isLoading={isLoading} onEdit={setEditing} onDelete={deleteItem} />
 
       <VocabularyStats items={allItems} />
     </div>
