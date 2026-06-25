@@ -40,6 +40,20 @@ export function findDuplicateVocabulary(items: Vocabulary[], word: string, excep
   return items.find((item) => item.id !== exceptId && normalizeWord(item.word) === normalizedWord);
 }
 
+function getVocabularySearchText(item: Vocabulary) {
+  return [
+    item.word,
+    item.meaning_vi,
+    item.example_en,
+    item.example_vi,
+    item.ipa,
+    item.part_of_speech,
+    ...item.tags
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 export function rowToVocabulary(row: string[]): Vocabulary {
   return {
     id: row[0] ?? "",
@@ -129,7 +143,7 @@ export function filterVocabulary(items: Vocabulary[], filters: VocabularyFilters
   const tag = filters.tag?.trim().toLowerCase();
 
   return items.filter((item) => {
-    const matchesSearch = !search || item.word.toLowerCase().includes(search);
+    const matchesSearch = !search || getVocabularySearchText(item).includes(search);
     const matchesPartOfSpeech = !partOfSpeech || item.part_of_speech.toLowerCase() === partOfSpeech;
     const matchesStatus = !filters.status || filters.status === "all" || item.status === filters.status;
     const matchesTag = !tag || item.tags.some((itemTag) => itemTag.toLowerCase() === tag);

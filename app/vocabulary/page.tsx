@@ -157,7 +157,7 @@ export default function VocabularyPage() {
         <label className="relative grid gap-2 text-sm font-medium">
           Search
           <Search className="pointer-events-none absolute bottom-3 left-3 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Search by word" />
+          <Input className="pl-9" value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Search word, meaning, example, tag" />
         </label>
         <label className="grid gap-2 text-sm font-medium">
           Part of speech
