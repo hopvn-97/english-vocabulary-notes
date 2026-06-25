@@ -5,6 +5,7 @@ import { Plus, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { QuickAddVocabulary } from "@/components/quick-add-vocabulary";
 import { VocabularyForm } from "@/components/vocabulary-form";
 import { VocabularyTable } from "@/components/vocabulary-table";
 import type { Vocabulary, VocabularyInput } from "@/types/vocabulary";
@@ -78,8 +79,10 @@ export default function VocabularyPage() {
       setEditing(null);
       setShowForm(true);
       await loadVocabulary();
+      return true;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Failed to save vocabulary.");
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -125,6 +128,8 @@ export default function VocabularyPage() {
       </div>
 
       {error ? <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
+
+      <QuickAddVocabulary isSubmitting={isSubmitting} onSubmit={saveVocabulary} />
 
       {showForm || editing ? (
         <VocabularyForm

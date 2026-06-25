@@ -23,7 +23,7 @@ type VocabularyFormProps = {
   initialValue?: Vocabulary | null;
   isSubmitting?: boolean;
   onCancel?: () => void;
-  onSubmit: (value: VocabularyInput) => Promise<void>;
+  onSubmit: (value: VocabularyInput) => Promise<boolean | void>;
 };
 
 export function VocabularyForm({ initialValue, isSubmitting = false, onCancel, onSubmit }: VocabularyFormProps) {
@@ -52,12 +52,12 @@ export function VocabularyForm({ initialValue, isSubmitting = false, onCancel, o
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSubmit({
+    const saved = await onSubmit({
       ...form,
       tags: tagText.split(",").map((tag) => tag.trim()).filter(Boolean)
     });
 
-    if (!initialValue) {
+    if (!initialValue && saved !== false) {
       setForm(emptyForm);
       setTagText("");
     }

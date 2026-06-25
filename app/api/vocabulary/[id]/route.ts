@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getVocabularies, updateVocabulary, deleteVocabulary } from "@/lib/google-sheets";
-import { mergeVocabulary, validateVocabularyInput } from "@/lib/vocabulary";
+import { findDuplicateVocabulary, mergeVocabulary, validateVocabularyInput } from "@/lib/vocabulary";
 import type { VocabularyInput } from "@/types/vocabulary";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +24,23 @@ export async function PUT(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Validation failed.", errors }, { status: 400 });
     }
 
-    const existing = (await getVocabularies()).find((item) => item.id === id);
+    const vocabularies = await getVocabularies();
+    const existing = vocabularies.find((item) => item.id === id);
 
     if (!existing) {
       return NextResponse.json({ error: "Vocabulary not found." }, { status: 404 });
+    }
+
+    const duplicate = findDuplicateVocabulary(vocabularies, body.word, id);
+
+    if (duplicate) {
+      return NextResponse.json(
+        {
+          error: `The word "${duplicate.word}" already exists.`,
+          errors: { word: "This word already exists." }
+        },
+        { status: 409 }
+      );
     }
 
     const updated = mergeVocabulary(existing, body);

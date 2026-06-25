@@ -30,6 +30,16 @@ export function normalizeTags(tags: unknown): string[] {
   return [];
 }
 
+export function normalizeWord(word: string) {
+  return word.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+export function findDuplicateVocabulary(items: Vocabulary[], word: string, exceptId?: string) {
+  const normalizedWord = normalizeWord(word);
+
+  return items.find((item) => item.id !== exceptId && normalizeWord(item.word) === normalizedWord);
+}
+
 export function rowToVocabulary(row: string[]): Vocabulary {
   return {
     id: row[0] ?? "",
