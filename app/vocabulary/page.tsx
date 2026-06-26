@@ -181,6 +181,8 @@ export default function VocabularyPage() {
         </label>
       </section>
 
+      <VocabularyTable items={tableItems} isLoading={isLoading} onEdit={setEditing} onDelete={deleteItem} />
+
       <QuickAddVocabulary isSubmitting={isSubmitting} onSubmit={saveVocabulary} />
 
       {showForm || editing ? (
@@ -191,8 +193,6 @@ export default function VocabularyPage() {
           onSubmit={saveVocabulary}
         />
       ) : null}
-
-      <VocabularyTable items={tableItems} isLoading={isLoading} onEdit={setEditing} onDelete={deleteItem} />
 
       <VocabularyStats items={allItems} />
     </div>
