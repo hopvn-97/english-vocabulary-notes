@@ -3,8 +3,8 @@ import { VOCABULARY_COLUMNS, rowToVocabulary, vocabularyToRow } from "@/lib/voca
 import type { Vocabulary } from "@/types/vocabulary";
 
 const SHEET_NAME = "vocabularies";
-const DATA_RANGE = `${SHEET_NAME}!A:K`;
-const HEADER_RANGE = `${SHEET_NAME}!A1:K1`;
+const DATA_RANGE = `${SHEET_NAME}!A:O`;
+const HEADER_RANGE = `${SHEET_NAME}!A1:O1`;
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -94,7 +94,7 @@ export async function updateVocabulary(id: string, vocabulary: Vocabulary) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: requiredEnv("GOOGLE_SHEET_ID"),
-    range: `${SHEET_NAME}!A${rowNumber}:K${rowNumber}`,
+    range: `${SHEET_NAME}!A${rowNumber}:O${rowNumber}`,
     valueInputOption: "RAW",
     requestBody: {
       values: [vocabularyToRow(vocabulary)]

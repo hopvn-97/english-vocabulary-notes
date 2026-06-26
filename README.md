@@ -20,7 +20,13 @@ Create a sheet tab named `vocabularies` with these columns in row 1:
 id, word, meaning_vi, example_en, example_vi, ipa, part_of_speech, tags, status, created_at, updated_at
 ```
 
-The app will also validate and write this header when it can access the tab.
+Phase 1 review scheduling adds these optional columns at the end:
+
+```text
+review_due_at, last_reviewed_at, review_count, ease_level
+```
+
+The app will validate and write the full header when it can access the tab, so existing sheets are migrated automatically.
 
 ## Google Cloud Service Account Setup
 

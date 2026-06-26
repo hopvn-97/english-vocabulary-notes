@@ -6,7 +6,27 @@ import { ArrowLeft, ArrowRight, BookOpen, RefreshCw, Shuffle } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Flashcard } from "@/components/flashcard";
-import { VOCABULARY_STATUSES, type Vocabulary, type VocabularyStatus } from "@/types/vocabulary";
+import type { ReviewGrade, Vocabulary, VocabularyStatus } from "@/types/vocabulary";
+
+type ReviewDeckMode = "due" | VocabularyStatus | "all";
+
+const reviewGradeMeta: Record<ReviewGrade, { label: string; helper: string; variant: "default" | "secondary" | "outline" }> = {
+  again: {
+    label: "Again",
+    helper: "Review soon",
+    variant: "outline"
+  },
+  good: {
+    label: "Good",
+    helper: "Schedule later",
+    variant: "default"
+  },
+  easy: {
+    label: "Easy",
+    helper: "Longer gap",
+    variant: "secondary"
+  }
+};
 
 function shuffleCards(cards: Vocabulary[]) {
   const shuffled = [...cards];
@@ -21,12 +41,44 @@ function shuffleCards(cards: Vocabulary[]) {
   return shuffled;
 }
 
+function getDueTime(vocabulary: Vocabulary) {
+  const dueTime = new Date(vocabulary.review_due_at).getTime();
+  return Number.isFinite(dueTime) ? dueTime : 0;
+}
+
+function sortReviewCards(cards: Vocabulary[]) {
+  return [...cards].sort((first, second) => getDueTime(first) - getDueTime(second));
+}
+
+function isVocabularyDue(vocabulary: Vocabulary) {
+  const dueTime = getDueTime(vocabulary);
+  return dueTime === 0 || dueTime <= Date.now();
+}
+
+function formatDueDate(value: string) {
+  if (!value) {
+    return "Now";
+  }
+
+  const date = new Date(value);
+
+  if (!Number.isFinite(date.getTime())) {
+    return "Now";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
 export default function ReviewPage() {
   const [items, setItems] = useState<Vocabulary[]>([]);
   const [index, setIndex] = useState(0);
-  const [status, setStatus] = useState("learning");
+  const [deckMode, setDeckMode] = useState<ReviewDeckMode>("due");
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isReviewing, setIsReviewing] = useState(false);
   const [error, setError] = useState("");
 
   const loadCards = useCallback(async () => {
@@ -35,7 +87,11 @@ export default function ReviewPage() {
 
     try {
       const params = new URLSearchParams();
-      if (status !== "all") params.set("status", status);
+      if (deckMode === "due") {
+        params.set("due", "today");
+      } else if (deckMode !== "all") {
+        params.set("status", deckMode);
+      }
 
       const response = await fetch(`/api/vocabulary?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json();
@@ -44,14 +100,14 @@ export default function ReviewPage() {
         throw new Error(payload.error ?? "Failed to load review cards.");
       }
 
-      setItems(payload.data);
+      setItems(sortReviewCards(payload.data));
       setIndex(0);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load review cards.");
     } finally {
       setIsLoading(false);
     }
-  }, [status]);
+  }, [deckMode]);
 
   useEffect(() => {
     void loadCards();
@@ -64,44 +120,40 @@ export default function ReviewPage() {
     setIndex(0);
   }
 
-  async function updateCurrentStatus(nextStatus: VocabularyStatus) {
-    if (!current || current.status === nextStatus) return;
+  async function submitReview(grade: ReviewGrade) {
+    if (!current) return;
 
-    setIsUpdatingStatus(true);
+    setIsReviewing(true);
     setError("");
 
     try {
-      const response = await fetch(`/api/vocabulary/${current.id}`, {
-        method: "PUT",
+      const response = await fetch(`/api/vocabulary/${current.id}/review`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          word: current.word,
-          meaning_vi: current.meaning_vi,
-          example_en: current.example_en,
-          example_vi: current.example_vi,
-          ipa: current.ipa,
-          part_of_speech: current.part_of_speech,
-          tags: current.tags,
-          status: nextStatus
-        })
+        body: JSON.stringify({ grade })
       });
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to update status.");
+        throw new Error(payload.error ?? "Failed to save review.");
       }
 
       setItems((value) => {
-        const updatedItems = value.map((item) => (item.id === current.id ? payload.data : item));
-        const filteredItems = status === "all" || nextStatus === status ? updatedItems : updatedItems.filter((item) => item.id !== current.id);
+        const updated = payload.data as Vocabulary;
+        const remainingItems = value.filter((item) => item.id !== current.id);
+        const shouldKeepCard =
+          deckMode === "all" ||
+          (deckMode === "due" && isVocabularyDue(updated)) ||
+          (deckMode !== "due" && updated.status === deckMode);
+        const nextItems = shouldKeepCard ? sortReviewCards([...remainingItems, updated]) : remainingItems;
 
-        setIndex((currentIndex) => Math.min(currentIndex, Math.max(0, filteredItems.length - 1)));
-        return filteredItems;
+        setIndex((currentIndex) => Math.min(currentIndex, Math.max(0, nextItems.length - 1)));
+        return nextItems;
       });
-    } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Failed to update status.");
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : "Failed to save review.");
     } finally {
-      setIsUpdatingStatus(false);
+      setIsReviewing(false);
     }
   }
 
@@ -110,7 +162,7 @@ export default function ReviewPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-normal">Flashcard review</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Click the card to flip between prompt and meaning.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Review due cards, then choose Again, Good, or Easy to schedule the next session.</p>
         </div>
         <Button asChild variant="outline">
           <Link href="/vocabulary">
@@ -122,8 +174,9 @@ export default function ReviewPage() {
 
       <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 shadow-sm sm:flex-row sm:items-end sm:justify-between">
         <label className="grid gap-2 text-sm font-medium sm:w-56">
-          Review status
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+          Review deck
+          <Select value={deckMode} onChange={(event) => setDeckMode(event.target.value as ReviewDeckMode)}>
+            <option value="due">Due today</option>
             <option value="all">All</option>
             <option value="new">New</option>
             <option value="learning">Learning</option>
@@ -150,20 +203,26 @@ export default function ReviewPage() {
         <>
           <Flashcard key={current.id} vocabulary={current} />
           <div className="grid gap-2 rounded-lg border bg-card p-4 shadow-sm sm:grid-cols-[auto_1fr] sm:items-center">
-            <span className="text-sm font-medium text-muted-foreground">Mark as</span>
+            <span className="text-sm font-medium text-muted-foreground">Schedule</span>
             <div className="grid gap-2 sm:grid-cols-3">
-              {VOCABULARY_STATUSES.map((nextStatus) => (
+              {(["again", "good", "easy"] as ReviewGrade[]).map((grade) => (
                 <Button
-                  key={nextStatus}
-                  variant={current.status === nextStatus ? "default" : "outline"}
-                  onClick={() => void updateCurrentStatus(nextStatus)}
-                  disabled={isUpdatingStatus}
-                  className="capitalize"
+                  key={grade}
+                  variant={reviewGradeMeta[grade].variant}
+                  onClick={() => void submitReview(grade)}
+                  disabled={isReviewing}
+                  className="h-auto flex-col gap-1 py-3"
                 >
-                  {nextStatus}
+                  <span>{reviewGradeMeta[grade].label}</span>
+                  <span className="text-xs font-normal opacity-80">{reviewGradeMeta[grade].helper}</span>
                 </Button>
               ))}
             </div>
+          </div>
+          <div className="grid gap-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground shadow-sm sm:grid-cols-3">
+            <span>Reviews: {current.review_count}</span>
+            <span>Ease: {current.ease_level}</span>
+            <span>Due: {formatDueDate(current.review_due_at)}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <Button variant="outline" onClick={() => setIndex((value) => Math.max(0, value - 1))} disabled={index === 0}>

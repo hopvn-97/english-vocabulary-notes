@@ -17,7 +17,8 @@ export async function GET(request: Request) {
       search: searchParams.get("search") ?? undefined,
       partOfSpeech: searchParams.get("part_of_speech") ?? undefined,
       status: (searchParams.get("status") as VocabularyStatus | "all" | null) ?? undefined,
-      tag: searchParams.get("tag") ?? undefined
+      tag: searchParams.get("tag") ?? undefined,
+      due: searchParams.get("due") === "today" ? "today" : undefined
     };
 
     const vocabularies = await getVocabularies();
